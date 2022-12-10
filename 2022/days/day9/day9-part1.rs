@@ -33,35 +33,41 @@ fn get_offset_from_current_coordinate(direction: &str) -> Coordinate {
     }
 }
 
-fn print_grid(grid: Vec<Vec<char>>) {
-    for line in grid {
-        for char in line {
-            print!("{}", char);
-        }
-        println!();
-    }
+// fn print_grid(grid: Vec<Vec<char>>) {
+//     for line in grid {
+//         for char in line {
+//             print!("{}", char);
+//         }
+//         println!();
+//     }
+// }
 
-    println!("=====");
-}
+// fn make_grid(curr_coords: [Coordinate; TOTAL_KNOTS]) {
+//     let mut grid: Vec<Vec<char>> = vec![];
+//     for _ in 0..TOTAL_KNOTS + 6 {
+//         grid.push(vec!['.'; TOTAL_KNOTS + 6]);
+//     }
 
-fn make_grid(curr_coords: [Coordinate; TOTAL_KNOTS]) {
-    let mut grid: Vec<Vec<char>> = vec![];
-    for _ in 0..TOTAL_KNOTS * 4 {
-        grid.push(vec!['.'; TOTAL_KNOTS * 4]);
-    }
+//     for (i, coord) in curr_coords.iter().enumerate() {
+//         println!("x: {:?} y: {:?}", coord.x, coord.y);
+//         let mut coord_x = coord.x;
+//         let mut coord_y = coord.y;
 
-    for (i, coord) in curr_coords.iter().enumerate() {
-        let mut coord_x = coord.x;
-        let mut coord_y = coord.y;
+//         // if coord_x < 0 {
+//         // coord_x = coord.x + 16;
+//         // }
 
-        coord_x = coord_x + 16;
-        coord_y = coord_y + 16;
+//         // if coord_y < 0 {
+//         // coord_y = coord.y + 16;
+//         // }
 
-        grid[coord_x as usize][coord_y as usize] = char::from_digit(i as u32, 10).unwrap();
-    }
+//         println!("after: x: {:?} y: {:?}", coord_x, coord_y);
 
-    print_grid(grid);
-}
+//         grid[coord_x as usize][coord_y as usize] = char::from_digit(i as u32, 10).unwrap();
+//     }
+
+//     print_grid(grid);
+// }
 
 const TOTAL_KNOTS: usize = 10;
 
@@ -107,7 +113,6 @@ fn main() {
 
             positions_visited.insert(curr_coords[TOTAL_KNOTS - 1]);
         }
-        // make_grid(curr_coords);
     });
 
     println!("Positions Visited: {:?}", positions_visited.len());
