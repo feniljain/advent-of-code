@@ -1,4 +1,5 @@
-use std::fs;
+use core::time;
+use std::{fs, thread};
 
 #[derive(Debug, Clone, Copy, Default)]
 struct Coordinate {
@@ -15,7 +16,12 @@ enum Operation {
 fn update_screen(screen: &mut Vec<Vec<char>>, sprite_start_pos: Coordinate, crt_pos: Coordinate) {
     if crt_pos.x <= sprite_start_pos.x + 2 && crt_pos.x >= sprite_start_pos.x {
         screen[crt_pos.y as usize][crt_pos.x as usize] = '#';
-        // visualize_screen(&screen);
+        visualize_screen(&screen);
+
+        let duration = time::Duration::from_millis(100);
+        thread::sleep(duration);
+
+        print!("\x1B[2J\x1B[1;1H");
     }
 }
 
@@ -38,8 +44,7 @@ fn get_crt_pos(cycles_completed: i32) -> Coordinate {
 }
 
 fn main() {
-    let input_str =
-        fs::read_to_string("days/day10/input-day10").expect("should contain input");
+    let input_str = fs::read_to_string("days/day10/input-day10").expect("should contain input");
 
     let operations = input_str
         .trim()
@@ -87,6 +92,4 @@ fn main() {
 
         sprite_start_pos.x = value - 1;
     });
-
-    visualize_screen(&screen);
 }
