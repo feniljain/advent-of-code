@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fs, thread::sleep, time::Duration};
+use std::{collections::VecDeque, fs};
 
 #[derive(Clone, Default, Debug)]
 struct NodeInfo {
@@ -99,65 +99,10 @@ fn plot_visited(visited: Vec<bool>, rows: usize, cols: usize) {
     }
 }
 
-fn visualize_screen(visited: &Vec<bool>, rows: usize, cols: usize) {
-    let mut cnt = 0;
-    for _i in 0..rows {
-        for _j in 0..cols {
-            if visited[cnt] {
-                print!("X");
-            } else {
-                print!(".");
-            }
-            cnt += 1;
-        }
-        println!();
-    }
-    print!("\x1B[2J\x1B[1;1H");
-}
-
-fn find_shortest_path(
-    graph: &Vec<NodeInfo>,
-    start_node_idx: usize,
-    rows: usize,
-    cols: usize,
-) -> i32 {
-    let mut queue = VecDeque::new();
-    let mut visited: Vec<bool> = vec![false; cols * (rows)];
-    let mut dist: Vec<i32> = vec![0; cols * (rows)];
-
-    queue.push_back(start_node_idx);
-    visited[start_node_idx] = true;
-    dist[start_node_idx] = 0;
-
-    let mut end_goal_dist = -1;
-
-    while let Some(node_idx) = queue.pop_front() {
-        for adj_node in &graph[node_idx].adj_nodes_info {
-            if !visited[adj_node.graph_idx] {
-                visited[adj_node.graph_idx] = true;
-                dist[adj_node.graph_idx] = dist[node_idx] + 1;
-                queue.push_back(adj_node.graph_idx);
-
-                if adj_node.ch == 'E' {
-                    end_goal_dist = dist[adj_node.graph_idx];
-                    break;
-                }
-
-                // visualize_screen(&visited, rows, cols);
-            }
-        }
-    }
-
-    // let duration = Duration::from_millis(100);
-    // sleep(duration);
-
-    end_goal_dist
-}
-
 fn main() {
     let input_str =
-        // fs::read_to_string("days/day12/example-input-day12").expect("should contain input");
-    fs::read_to_string("days/day12/input-day12").expect("should contain input");
+        fs::read_to_string("days/day12/example-input-day12").expect("should contain input");
+    // fs::read_to_string("days/day12/input-day12").expect("should contain input");
 
     let lines: Vec<&str> = input_str.split("\n").collect();
 
@@ -170,6 +115,10 @@ fn main() {
     });
 
     let mut graph: Vec<NodeInfo> = vec![Default::default(); lines[0].len() * (lines.len() - 1)];
+    let mut visited: Vec<bool> = vec![false; lines[0].len() * (lines.len() - 1)];
+    let mut dist: Vec<usize> = vec![0; lines[0].len() * (lines.len() - 1)];
+
+    let mut start_node_idx = 0;
 
     for i in 0..matrix.len() {
         for j in 0..matrix[0].len() {
@@ -180,19 +129,35 @@ fn main() {
                 ch: matrix[i][j],
                 adj_nodes_info: adj_nodes,
             };
-        }
-    }
 
-    let mut min_end_goal_dist = i32::MAX;
-    for (i, node) in graph.iter().enumerate() {
-        if node.ch == 'S' || node.ch == 'a' {
-            let end_goal_dist = find_shortest_path(&graph, i, matrix.len(), matrix[0].len());
-            if (end_goal_dist != -1) && (end_goal_dist < min_end_goal_dist) {
-                min_end_goal_dist = end_goal_dist;
+            if matrix[i][j] == 'S' {
+                start_node_idx = idx;
             }
         }
     }
 
-    println!("End Goal Distance: {min_end_goal_dist:?}");
+    let mut queue = VecDeque::new();
+    queue.push_back(start_node_idx);
+    visited[start_node_idx] = true;
+    dist[start_node_idx] = 0;
+
+    let mut end_goal_dist = 0;
+
+    while let Some(node_idx) = queue.pop_front() {
+        for adj_node in &graph[node_idx].adj_nodes_info {
+            if !visited[adj_node.graph_idx] {
+                visited[adj_node.graph_idx] = true;
+                dist[adj_node.graph_idx] = dist[node_idx] + 1;
+                queue.push_back(adj_node.graph_idx);
+
+                if adj_node.ch == 'E' {
+                    end_goal_dist = dist[adj_node.graph_idx];
+                    break;
+                }
+            }
+        }
+    }
+
+    println!("End Goal Distance: {end_goal_dist:?}");
     // plot_visited(visited, matrix.len(), matrix[0].len());
 }

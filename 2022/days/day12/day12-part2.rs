@@ -143,13 +143,13 @@ fn find_shortest_path(
                     break;
                 }
 
-                // visualize_screen(&visited, rows, cols);
+                visualize_screen(&visited, rows, cols);
             }
         }
     }
 
-    // let duration = Duration::from_millis(100);
-    // sleep(duration);
+    let duration = Duration::from_millis(100);
+    sleep(duration);
 
     end_goal_dist
 }
