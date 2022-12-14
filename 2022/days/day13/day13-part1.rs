@@ -1,12 +1,15 @@
-use std::{
-    cmp::{self, Ordering},
-    fs,
-};
+use std::{cmp, fs};
 
 use nom::{
     branch::alt, bytes::complete::tag, character::complete as cc, combinator::map,
     multi::separated_list0, sequence::delimited, IResult,
 };
+
+#[derive(Debug, Clone)]
+struct Pair {
+    left: Packet,
+    right: Packet,
+}
 
 #[derive(Debug, Clone)]
 enum Packet {
@@ -77,7 +80,7 @@ fn main() {
     let input_str =
         // fs::read_to_string("days/day13/example-input-day13").expect("should contain input");
     fs::read_to_string("days/day13/input-day13").expect("should contain input");
-    let mut packets: Vec<Packet> = input_str
+    let pairs: Vec<Pair> = input_str
         .split("\n\n")
         .map(|pair_lines| {
             let (line1, line2) = pair_lines
@@ -87,40 +90,21 @@ fn main() {
             let res1 = parse_packet(line1).expect("invalid input");
             let res2 = parse_packet(line2).expect("invalid input");
 
-            vec![res1.1, res2.1]
+            Pair {
+                left: res1.1,
+                right: res2.1,
+            }
         })
-        .flatten()
         .collect();
 
-    let packet_2 = Packet::List(vec![Packet::List(vec![Packet::Integer(2)])]);
-    let packet_6 = Packet::List(vec![Packet::List(vec![Packet::Integer(6)])]);
-
-    packets.push(packet_2.clone());
-    packets.push(packet_6.clone());
-
-    packets.sort_by(|first, second| {
-        // Here we expect directly coz it's always mentioned that we
-        // need to continue computation if inputs are same
-        // ( inputs = integer/list ) and None is used to represent
-        // that state, so final state can never be None
-        let order = check_order(first, second).expect("internal error");
+    let n_pairs = pairs.len();
+    let mut sum_of_indices = 0;
+    for i in 0..n_pairs {
+        let order = check_order(&pairs[i].left, &pairs[i].right).expect("internal error");
         if order {
-            return Ordering::Less;
-        } else {
-            return Ordering::Greater;
+            sum_of_indices += i + 1;
         }
-    });
+    }
 
-    let decoder_key = packets.iter().enumerate().fold(1, |acc, (i, packet)| {
-        let packet_2_comparison = check_list(&vec![packet.clone()], &vec![packet_2.clone()]);
-        let packet_6_comparison = check_list(&vec![packet.clone()], &vec![packet_6.clone()]);
-
-        if None == packet_2_comparison || None == packet_6_comparison {
-            acc * (i + 1)
-        } else {
-            acc * 1
-        }
-    });
-
-    println!("Decoder Key: {:?}", decoder_key);
+    println!("Sum Of Indices: {:?}", sum_of_indices);
 }
