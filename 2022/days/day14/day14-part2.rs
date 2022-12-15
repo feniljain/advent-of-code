@@ -1,6 +1,6 @@
 use std::{
     fs,
-    ops::{Add, Sub}, time::Duration, thread::sleep,
+    ops::{Add, Sub},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -121,13 +121,6 @@ fn drop_sand(
     while check_limits(sand_coord, rows, cols) {
         let next_char = grid[sand_coord.0 + 1][sand_coord.1];
 
-        print_grid(&grid);
-
-        let duration = Duration::from_millis(100);
-        sleep(duration);
-
-        print!("\x1B[2J\x1B[1;1H");
-
         if next_char != '#' && next_char != 'o' {
             if sand_coord.0 == rows - 2 {
                 panic!("invalid state");
@@ -171,8 +164,8 @@ fn drop_sand(
 
 fn main() {
     let input_str =
-        fs::read_to_string("days/day14/example-input-day14").expect("should contain input");
-    // fs::read_to_string("days/day14/input-day14").expect("should contain input");
+        // fs::read_to_string("days/day14/example-input-day14").expect("should contain input");
+    fs::read_to_string("days/day14/input-day14").expect("should contain input");
 
     let mut min_x = i32::MAX;
     let min_y = 0;
@@ -302,6 +295,8 @@ fn main() {
             break;
         }
     }
+
+    // print_grid(&grid);
 
     println!("sand count: {:?}", cnt);
 }

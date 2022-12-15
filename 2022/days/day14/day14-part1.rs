@@ -1,6 +1,6 @@
 use std::{
     fs,
-    ops::{Add, Sub}, time::Duration, thread::sleep,
+    ops::{Add, Sub},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -29,6 +29,19 @@ impl Add for Coordinate {
             y: self.y + rhs.y,
         }
     }
+}
+
+impl Coordinate {
+    // This function is to be used on input coords which either have
+    // same `x` or same `y`
+    // fn distance(&self, second_coord: &Coordinate) -> i32 {
+    //     let diff_in_coord = self.clone() - second_coord.clone();
+
+    //     let dx = diff_in_coord.x.abs();
+    //     let dy = diff_in_coord.y.abs();
+
+    //     std::cmp::max(dx, dy)
+    // }
 }
 
 fn get_coords_between(start_coord: Coordinate, end_coord: Coordinate) -> Vec<Coordinate> {
@@ -65,17 +78,15 @@ struct ChangeCoordinate {
     min_x: i32,
     _max_y: i32,
     min_y: i32,
-    d_buffer: i32,
 }
 
 impl ChangeCoordinate {
-    fn new(max_x: i32, min_x: i32, max_y: i32, min_y: i32, d_buffer: i32) -> Self {
+    fn new(max_x: i32, min_x: i32, max_y: i32, min_y: i32) -> Self {
         Self {
             _max_x: max_x,
             min_x,
             _max_y: max_y,
             min_y,
-            d_buffer,
         }
     }
 
@@ -90,7 +101,8 @@ impl ChangeCoordinate {
         //
         // y denotes rows, and
         // x denotes columns
-        (coord.y as usize, (x + self.d_buffer) as usize)
+        (coord.y as usize, x as usize)
+        // (x as usize, coord.y as usize)
     }
 }
 
@@ -121,16 +133,9 @@ fn drop_sand(
     while check_limits(sand_coord, rows, cols) {
         let next_char = grid[sand_coord.0 + 1][sand_coord.1];
 
-        print_grid(&grid);
-
-        let duration = Duration::from_millis(100);
-        sleep(duration);
-
-        print!("\x1B[2J\x1B[1;1H");
-
         if next_char != '#' && next_char != 'o' {
             if sand_coord.0 == rows - 2 {
-                panic!("invalid state");
+                return None;
             }
 
             sand_coord.0 += 1;
@@ -141,10 +146,14 @@ fn drop_sand(
 
         if left_diagonal_char != '#' && left_diagonal_char != 'o' {
             if sand_coord.0 == rows - 2 {
-                panic!("invalid state");
+                return None;
             }
 
             sand_coord.0 += 1;
+
+            if sand_coord.1 == 1 {
+                return None;
+            }
 
             sand_coord.1 -= 1;
             continue;
@@ -154,10 +163,14 @@ fn drop_sand(
 
         if right_diagonal_char != '#' && right_diagonal_char != 'o' {
             if sand_coord.0 == rows - 2 {
-                panic!("invalid state");
+                return None;
             }
 
             sand_coord.0 += 1;
+
+            if sand_coord.1 == cols - 2 {
+                return None;
+            }
 
             sand_coord.1 += 1;
             continue;
@@ -171,8 +184,8 @@ fn drop_sand(
 
 fn main() {
     let input_str =
-        fs::read_to_string("days/day14/example-input-day14").expect("should contain input");
-    // fs::read_to_string("days/day14/input-day14").expect("should contain input");
+        // fs::read_to_string("days/day14/example-input-day14").expect("should contain input");
+    fs::read_to_string("days/day14/input-day14").expect("should contain input");
 
     let mut min_x = i32::MAX;
     let min_y = 0;
@@ -230,79 +243,25 @@ fn main() {
     let rows = max_y - min_y + 1;
     let cols = max_x - min_x + 1;
 
-    let mut rows = rows as usize;
-    let mut cols = cols as usize;
+    let change_coord = ChangeCoordinate::new(max_x, min_x, max_y, min_y);
 
-    let change_coord = ChangeCoordinate::new(max_x, min_x, max_y, min_y, 0);
-
-    let mut grid = vec![vec!['.'; cols]; rows];
+    let mut grid = vec![vec!['.'; cols as usize]; rows as usize];
 
     for coord in coords {
         let (x, y) = change_coord.change_coord_system(coord);
         grid[x][y] = '#';
     }
 
-    let (source_x, source_y) = change_coord.change_coord_system(Coordinate { x: 500, y: 0 });
-    grid[source_x][source_y] = '+';
-
-    // Two observations we make:
-    // - First, max triangle base can
-    // be calculated using AP series
-    // formula with n = height, this
-    // can give us how big the base
-    // would be, for example it's
-    // 1 + (11 - 1) * 2 = 21
-    //
-    // - Second, all obstacles in
-    // input will be in range of max
-    // triangle the salt can make,
-    // this frees us from handling
-    // the case where obstacles are
-    // longer than triangle base
-
-    // calculate base
-    let base_len = 1 + rows * 2;
-
-    // calculate required buffer space
-    let needed_space_on_each_side = (base_len - 1) / 2;
-    let left_buffer_len = needed_space_on_each_side - (source_y + 1) + 2;
-    let right_buffer_len = needed_space_on_each_side - (cols - (source_y + 1));
-
-    // make left buffer space
-    for i in 0..rows {
-        let mut left_buffer = vec!['.'; left_buffer_len];
-        left_buffer.append(&mut grid[i]);
-        grid[i] = left_buffer;
-    }
-
-    // make right buffer space
-    for i in 0..rows {
-        let mut right_buffer = vec!['.'; right_buffer_len];
-        grid[i].append(&mut right_buffer);
-    }
-
-    cols += left_buffer_len + right_buffer_len;
-
-    // add rock floor after a row
-    grid.push(vec!['.'; cols]);
-    grid.push(vec!['#'; cols]);
-
-    rows += 2;
-
-    let change_coord = ChangeCoordinate::new(max_x, min_x, max_y, min_y, (left_buffer_len) as i32);
-    let (source_x, source_y) = change_coord.change_coord_system(Coordinate { x: 500, y: 0 });
+    let (x, y) = change_coord.change_coord_system(Coordinate { x: 500, y: 0 });
+    grid[x][y] = '+';
 
     let mut cnt = 0;
-    while let Some((x, y)) = drop_sand(&grid, (source_x, source_y), rows as usize, cols as usize) {
-        cnt += 1;
-
+    while let Some((x, y)) = drop_sand(&grid, (x, y), rows as usize, cols as usize) {
         grid[x][y] = 'o';
-
-        if x == source_x && y == source_y {
-            break;
-        }
+        cnt += 1;
     }
+
+    print_grid(&grid);
 
     println!("sand count: {:?}", cnt);
 }
-// 329
