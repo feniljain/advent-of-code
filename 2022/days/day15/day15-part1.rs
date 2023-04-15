@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    ops::{Add, Range, Sub},
+    ops::{Add, Sub},
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -133,7 +133,7 @@ impl MaxMin {
 
 #[derive(Debug, Clone, Copy)]
 struct SensorInfo {
-    _coord: Coordinate,
+    coord: Coordinate,
     upper_left_line: Line,
     upper_right_line: Line,
     lower_left_line: Line,
@@ -142,11 +142,42 @@ struct SensorInfo {
     lower_coord: Coordinate,
     left_coord: Coordinate,
     right_coord: Coordinate,
-    beacon_coord: Coordinate,
 }
 
 impl SensorInfo {
     fn find_collinear_point(&self, y_to_check: i64) -> [Coordinate; 4] {
+        // x1, y1 -> first corner coord
+        // x2, y2 -> second corner coord
+        // x3, y3 -> second corner coord
+        // Formula: x1(y2 – y3) + x2(y3 – y1) + x3(y1 – y2) = 0
+
+        let calculate = |first_coord: Coordinate, second_coord: Coordinate| -> Coordinate {
+            // println!(
+            // "1: {:?}",
+            // first_coord.x as i128 * (second_coord.y - y_to_check) as i128
+            // );
+            // println!("2: {:?}", second_coord.x * (y_to_check - first_coord.y));
+            let x = ((first_coord.x * (second_coord.y - y_to_check))
+                + (second_coord.x * (y_to_check - first_coord.y)))
+                / (second_coord.y - first_coord.y);
+
+            Coordinate { x, y: y_to_check }
+        };
+
+        let first_intersection = calculate(self.upper_coord, self.left_coord);
+        let second_intersection = calculate(self.left_coord, self.lower_coord);
+        let third_intersection = calculate(self.lower_coord, self.right_coord);
+        let fourth_intersection = calculate(self.right_coord, self.upper_coord);
+
+        [
+            first_intersection,
+            second_intersection,
+            third_intersection,
+            fourth_intersection,
+        ]
+    }
+
+    fn find_collinear_point1(&self, y_to_check: i64) -> [Coordinate; 4] {
         let x = self.upper_left_line.calculate_x(y_to_check);
         let first_intersection = Coordinate { x, y: y_to_check };
         let x = self.lower_left_line.calculate_x(y_to_check);
@@ -215,16 +246,20 @@ impl SensorInfo {
     }
 }
 
+const ROW_TO_CHECK: i64 = 2000000;
+// const ROW_TO_CHECK: i64 = 10;
+
 fn calculate_manhattan_distance(coord1: Coordinate, coord2: Coordinate) -> i64 {
     (coord1.x - coord2.x).abs() + (coord1.y - coord2.y).abs()
 }
 
 fn compute(
     sensor_info: &SensorInfo,
-    mut ranges: Vec<Range<i64>>,
-    // beacons: &HashMap<Coordinate, ()>,
-) -> (Vec<Range<i64>>, bool) {
-    let coords = sensor_info.find_collinear_point(ROW_TO_CHECK).to_vec();
+    coords_set: &mut HashSet<Coordinate>,
+    y: i64,
+    beacons: &HashMap<Coordinate, ()>,
+) {
+    let coords = sensor_info.find_collinear_point1(ROW_TO_CHECK).to_vec();
     let mut first_coord = None;
     let mut second_coord = None;
 
@@ -242,119 +277,31 @@ fn compute(
         }
     }
 
-    // match (first_coord, second_coord) {
-    //     (Some(first_coord), Some(second_coord)) => {
-    //         // println!("first_coord: {first_coord:?} - second_coord: {second_coord:?}");
-    //         for i in first_coord.x..=second_coord.x {
-    //             // println!(
-    //             //     "Coord1: {:?}",
-    //             //     Coordinate {
-    //             //         x: i,
-    //             //         y,
-    //             //     }
-    //             // );
-    //             let coord = Coordinate { x: i, y };
-    //             if !beacons.contains_key(&coord) {
-    //                 coords_set.insert(coord);
-    //             }
-    //         }
-    //     }
-    //     _ => (),
-    // }
-
-    //     let first_coord = first_coord.expect("invalid first coord");
-    //     let second_coord = second_coord.expect("invalid second coord");
-
     match (first_coord, second_coord) {
         (Some(first_coord), Some(second_coord)) => {
-            let calc_range = first_coord.x..(second_coord.x + 1);
-            let beacon_overlaps = calc_range.contains(&sensor_info.beacon_coord.x);
-
-            let l = ranges.len();
-            if l == 0 {
-                ranges.push(calc_range.clone());
-                return (vec![calc_range], beacon_overlaps);
-            }
-
-            // let mut pos_to_remove = vec![];
-            let mut stack = vec![ranges[0].clone()];
-            println!("===");
-            println!("ranges: {:?} - l: {l}", ranges);
-
-            let mut i = 1;
-            while i < l {
-                let mut top = stack[0].clone();
-
-                if top.end < ranges[i].start {
-                    stack.push(ranges[i].clone());
-                } else if top.end < ranges[i].end {
-                    top.end = ranges[i].end;
-                    stack.pop();
-                    stack.push(top.clone());
+            // println!("first_coord: {first_coord:?} - second_coord: {second_coord:?}");
+            for i in first_coord.x..=second_coord.x {
+                // println!(
+                //     "Coord1: {:?}",
+                //     Coordinate {
+                //         x: i,
+                //         y,
+                //     }
+                // );
+                let coord = Coordinate { x: i, y };
+                if !beacons.contains_key(&coord) {
+                    coords_set.insert(coord);
                 }
-
-                i += 1;
-
-                //                 let range = &ranges[i];
-                //                 println!(
-                //                     "Result from {:?} and {:?}: {:?}",
-                //                     range,
-                //                     calc_range,
-                //                     range_intersect(range, &calc_range)
-                //                 );
-
-                //                 match range_intersect(&range, &calc_range) {
-                //                     Some(new_range) => {
-                //                         // calc_range = range;
-                //                         ranges[i] = new_range.clone();
-                //                         calc_range = new_range;
-                //                         // pos_to_remove.push(i);
-                //                         break;
-                //                     }
-                //                     None => {
-                //                         insert = true;
-                //                         // ranges.push(calc_range.clone());
-                //                     }
-                //                 }
             }
-
-            return (ranges, beacon_overlaps);
         }
-        _ => return (ranges, false),
+        _ => (),
     }
 }
-
-fn range_intersect(first_range: &Range<i64>, second_range: &Range<i64>) -> Option<Range<i64>> {
-    let covers_completely = |first_range: &Range<i64>, second_range: &Range<i64>| -> bool {
-        first_range.start <= second_range.start && first_range.end >= second_range.end
-    };
-
-    if covers_completely(first_range, second_range) {
-        return Some(first_range.clone());
-    } else if covers_completely(second_range, first_range) {
-        return Some(second_range.clone());
-    }
-
-    // start is partially intersecting
-    if first_range.start >= second_range.start && first_range.start <= second_range.end {
-        return Some(second_range.start..first_range.end);
-    }
-
-    // end is partially intersecting
-    if first_range.end >= second_range.start && first_range.end <= second_range.end {
-        return Some(first_range.start..second_range.end);
-    }
-
-    return None;
-}
-
-// const ROW_TO_CHECK: i64 = 2000000;
-const ROW_TO_CHECK: i64 = 10;
 
 fn main() {
     let input_str =
-        fs::read_to_string("days/day15/example-input-day15").expect("should contain input");
-    // fs::read_to_string("days/day15/input-day15").expect("should contain input");
+        // fs::read_to_string("days/day15/example-input-day15").expect("should contain input");
+    fs::read_to_string("days/day15/input-day15").expect("should contain input");
 
     // For this question, our convention of converting given
     // coordinate to indexable numbers is:
@@ -435,7 +382,7 @@ fn main() {
         // println!("direction: {direction:?}");
 
         let sensor_info = SensorInfo {
-            _coord: sensor_coord,
+            coord: sensor_coord,
             upper_left_line,
             upper_right_line,
             lower_left_line,
@@ -444,7 +391,6 @@ fn main() {
             lower_coord,
             left_coord,
             right_coord,
-            beacon_coord,
         };
 
         sensors.push(sensor_info.clone());
@@ -456,39 +402,159 @@ fn main() {
     // .flatten()
     // .collect();
 
-    // let mut coords_lying_on_row: HashSet<Coordinate> = HashSet::new();
-    let mut cnt = 0;
-    // let mut a = vec![];
-    // let ranges: Vec<Range<i64>> = vec![];
-
-    let ranges = sensors.iter().fold(vec![], |ranges, sensor_info| {
-        let (ranges, beacon_overlaps) = compute(sensor_info, ranges);
-        if beacon_overlaps {
-            cnt += 1;
-        }
-
-        ranges
-    });
-    // .collect();
-
-    let a: i64 = ranges.iter().map(|range| range.end - range.start).sum();
-    println!("ranges: {ranges:?} - {:?}", a - cnt);
-
-    // for range in ranges {
+    let mut coords_lying_on_row: HashSet<Coordinate> = HashSet::new();
+    // for row in 0..10 {
+    for sensor_info in &sensors {
+        compute(sensor_info, &mut coords_lying_on_row, ROW_TO_CHECK, &beacons);
+        // println!("{:?}", coords_lying_on_row);
+    }
     // }
 
-    // .filter_map(|range| {
-    //     range.and_then(|range| {
-    //         println!("range: {:?}", range);
-    //         // range.chain
-    //         a.extend(range.clone());
-    //         return Some(range.end - range.start);
-    //     })
+    println!("len: {:?}", coords_lying_on_row.len());
+    // println!("len: {:?}", coords_lying_on_row);
+
+    // let mut min_x = i64::MAX;
+    // let mut max_x = i64::MIN;
+
+    // let a: HashSet<&Coordinate> = HashSet::from_iter(points_to_test.iter());
+    // println!("{:?}", a.len());
+    // println!("{:?}", a);
+    // points_to_test.iter().for_each(|coord| {
+    //     // println!("Checking coord: {:?}", coord);
+    //     // for sensor_info in &sensors {
+    //     //     if sensor_info.lies_in_coverage(&coord, false) {
+    //     if !beacons.contains_key(coord) {
+    //         coords_lying_on_row.insert(*coord);
+    //     }
+    //     // break;
+    //     // }
+    //     // }
     // });
-    // .fold(Range::new, f)
-    // .sum();
 
-    // println!("{:?}", sum - cnt);
+    //     let x_diff = max_min.min_x * -1;
+    //     let y_diff = max_min.min_y * -1;
+    //     // let x_diff = max_min.min_x * 0;
+    //     // let y_diff = max_min.min_y * -1;
 
-    // println!("len: {:?}", coords_lying_on_row.len());
+    //     // println!("Min y: {:?} - Min x: {:?}", max_min.min_x, max_min.min_y);
+
+    //     let rows = max_min.max_y - max_min.min_y + 1;
+    //     let cols = max_min.max_x - max_min.min_x + 1;
+
+    //     // println!("Rows: {rows} - Cols: {cols}");
+
+    //     let rows = rows as usize;
+    //     let cols = cols as usize;
+
+    //     let mut grid = vec![vec!['.'; cols]; rows];
+
+    //     for sensor_info in &sensors {
+    //         let grid_coords = convert_to_grid_coord(sensor_info.coord, x_diff, y_diff);
+    //         grid[grid_coords.x as usize][grid_coords.y as usize] = 'S';
+    //     }
+
+    //     for (beacon_coord, _) in beacons {
+    //         let grid_coords = convert_to_grid_coord(beacon_coord, x_diff, y_diff);
+    //         // println!("Beacon Coords: {:?} Grid Coords: {:?}", beacon_coord, grid_coords);
+    //         grid[grid_coords.x as usize][grid_coords.y as usize] = 'B';
+    //     }
+
+    // for i in 0..rows {
+    //     for j in 0..cols {
+    //         let coord = convert_to_plane_coord(
+    //             Coordinate {
+    //                 x: i as i64,
+    //                 y: j as i64,
+    //             },
+    //             x_diff,
+    //             y_diff,
+    //         );
+
+    //         'inner_loop: for idx in 0..sensors.len() {
+    //             let sensor_info = &sensors[idx];
+
+    //             // Direction coordinate struct comparison
+    //             // is not working for some reason
+    //             if sensor_info.coord.x != 12 || sensor_info.coord.y != 14 {
+    //                 // If you don't specify here which loop, it takes the
+    //                 // outer loop for continue
+    //                 continue 'inner_loop;
+    //             }
+
+    //             if sensor_info.lies_in_coverage(&coord, false)
+    //                 && grid[i][j] != 'S'
+    //                 && grid[i][j] != 'B'
+    //             {
+    //                 grid[i][j] = '#';
+    //             }
+    //         }
+
+    //         // println!("Coord New: {coord:?}");
+    //         // println!("==========");
+    //     }
+    // }
+
+    // print_grid(&grid);
+
+    // println!("sand count: {:?}", cnt);
 }
+
+fn print_grid(grid: &Vec<Vec<char>>) {
+    let rows = grid.len();
+    let cols = grid[0].len();
+    for i in 0..rows {
+        for j in 0..cols {
+            print!("{}", grid[i][j]);
+        }
+        println!();
+    }
+}
+
+fn convert_to_grid_coord(coord: Coordinate, x_diff: i64, y_diff: i64) -> Coordinate {
+    Coordinate {
+        x: coord.y + y_diff,
+        y: coord.x + x_diff,
+    }
+}
+
+fn convert_to_plane_coord(coord: Coordinate, x_diff: i64, y_diff: i64) -> Coordinate {
+    Coordinate {
+        x: coord.y - y_diff,
+        y: coord.x - x_diff,
+    }
+}
+
+// fn check_range(sensors: &Vec<SensorInfo>, direction: i8) {
+//     let mut coord = Coordinate {
+//         x: 0,
+//         y: ROW_TO_CHECK,
+//     };
+//     // Go left on axis
+
+//     loop {
+//         // println!("=========");
+//         // println!("Coordinate to check: {coord:?}");
+//         let mut covered = false;
+
+//         for sensor_info in sensors {
+//             covered = sensor_info.lies_in_coverage(&coord, false);
+//             if covered {
+//                 break;
+//             }
+//         }
+
+//         if !covered {
+//             break;
+//         }
+
+//         // println!("Coordinate found: {coord:?}");
+
+//         coord = coord
+//             + Coordinate {
+//                 x: direction.signum() as i64,
+//                 y: 0,
+//             };
+
+//         // println!("=========");
+//     }
+// }
